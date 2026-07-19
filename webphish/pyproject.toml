@@ -1,0 +1,31 @@
+[project]
+name = "webphish"
+requires-python = ">=3.14,<3.15"
+version = "0.1.0"
+description = "implementation of look before you leap"
+
+# deployment dependencies
+dependencies = [
+    "matplotlib>=3.11.1",
+    "openpyxl>=3.1.5",
+    "pandas>=3.0.3",
+    "pyarrow>=25.0.0",
+    "scikit-learn>=1.9.0",
+    "torch>=2.13.0",
+    "torchaudio>=2.11.0",
+    "torchvision>=0.28.0",
+]
+
+# developer dependencies
+[dependency-groups]
+dev = [
+]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu130" }
+torchvision = { index = "pytorch-cu130" }
+torchaudio = { index = "pytorch-cu130" }
+
+[[tool.uv.index]]
+name = "pytorch-cu130"
+url = "https://download.pytorch.org/whl/cu130"
