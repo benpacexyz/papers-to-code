@@ -8,6 +8,7 @@ description = "implementation of look before you leap"
 dependencies = [
     "matplotlib>=3.11.1",
     "openpyxl>=3.1.5",
+    "optuna>=4.9.0",
     "pandas>=3.0.3",
     "pyarrow>=25.0.0",
     "scikit-learn>=1.9.0",
