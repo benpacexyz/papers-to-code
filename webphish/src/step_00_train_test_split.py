@@ -13,14 +13,14 @@ from sklearn.model_selection import train_test_split
 # utils
 import src.utils as ut
 
+# uv run --active --directory .\webphish python -m src.step_00_train_test_split
 # __file__ not defined (e.g. PyCharm console)
 try:
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+    DATA_DIR = os.path.join(SCRIPT_DIR, '..', 'data')
 except NameError:
     SCRIPT_DIR = os.getcwd()
-
-# setup data directory relative to this file
-DATA_DIR = os.path.join(SCRIPT_DIR, 'data')
+    DATA_DIR = os.path.join(SCRIPT_DIR, 'data')
 
 ##########
 # ### Load In Collected Data and WebPhish Data
