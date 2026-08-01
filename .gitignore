@@ -11,3 +11,6 @@ __pycache__/
 .claude/
 claude/
 codex/
+
+# auto-research
+webphish-auto/
