@@ -1,0 +1,17 @@
+[project]
+name = "micrograd"
+requires-python = ">=3.14,<3.15"
+version = "0.1.0"
+description = "implementation of micrograd"
+
+# deployment dependencies
+dependencies = [
+    "ipython>=9.16.1",
+    "matplotlib>=3.11.1",
+    "pandas>=3.0.3",
+]
+
+# developer dependencies
+[dependency-groups]
+dev = [
+]
