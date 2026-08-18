@@ -27,6 +27,7 @@ class Value:
 
     # defines + operator for Value
     def __add__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
         out = Value(
             data=self.data + other.data,
             _children=(self, other),
@@ -45,6 +46,7 @@ class Value:
 
     # defines * operator for Value
     def __mul__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
         out = Value(
             data=self.data * other.data,
             _children=(self, other),
@@ -61,6 +63,47 @@ class Value:
 
         return out
 
+    # defines ** operator for Value
+    def __pow__(self, other):
+        assert isinstance(other, (int, float))
+        out = Value(
+            data=self.data ** other,
+            _children=(self,),
+            _op=f'**{other}'
+        )
+
+        def _backward():
+            self.grad += other * self.data ** (other - 1) * out.grad
+
+        out._backward = _backward
+
+        return out
+
+    # negative operator
+    def __neg__(self):
+        return self * -1
+
+    # subtract operator
+    def __sub__(self, other):
+        return self + (-other)
+
+    # division using trick a / b = a * (b**-1) = a * (1/b)
+    def __truediv__(self, other):
+        return self * other**-1
+
+    # r methods that allow for python right object op e.g. 2 * a, a = Value(3)
+    def __radd__(self, other):
+        return self + other
+
+    def __rmul__(self, other):
+        return self * other
+
+    def __rsub__(self, other):
+        return other + (-self)
+
+    def __rtruediv__(self, other):
+        return other * self**-1
+
     # tanh: function can be arbitrary complicated
     # as long as local differentiation is possible
     def tanh(self):
@@ -75,6 +118,22 @@ class Value:
         # local derivative of tanh(x) is 1 - tanh(x)^2
         def _backward():
             self.grad += (1 - t ** 2) * out.grad
+
+        out._backward = _backward
+
+        return out
+
+    # relu: returns 0 for negative values
+    # and the value itself for positive values
+    def relu(self):
+        out = Value(
+            data=max(0, self.data),
+            _children=(self,),
+            _op='ReLU'
+        )
+
+        def _backward():
+            self.grad += (self.data > 0) * out.grad
 
         out._backward = _backward
 

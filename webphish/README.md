@@ -15,7 +15,7 @@ Network model outlined in the paper
 * The data files prefixed `webphish_xx`were published by the "Look before you leap" authors.
 * The code in this repo should be run as step_00 -> step_01 -> step_02.
 
-## Optimization 
+## Optimization (Auto Research)
 
 The first iteration of the model step_01 closely follows the implementation in the research paper. However, the model was optimized past step_01 through an automated research process (i.e. see karpathy's auto-research) in which an agent was instructed to conduct a structured hyperparameter and architecture search using Optuna. As shown in the prompt below the agent was also instructed to evaluate candidate configurations against a multi-seed baseline to distinguish genuine improvements from run-to-run variance.
 
