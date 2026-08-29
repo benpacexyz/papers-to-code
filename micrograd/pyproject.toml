@@ -1,3 +1,7 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
 [project]
 name = "micrograd"
 requires-python = ">=3.14,<3.15"
@@ -14,4 +18,9 @@ dependencies = [
 # developer dependencies
 [dependency-groups]
 dev = [
+    "maturin>=1.0,<2.0",
 ]
+
+[tool.maturin]
+manifest-path = "nn/Cargo.toml"
+module-name = "rust_nn"

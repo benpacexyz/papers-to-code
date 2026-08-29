@@ -16,16 +16,16 @@ from torch.utils.data import DataLoader
 # utils
 import src.utils as ut
 
-# uv run --active --directory .\webphish python -m src.step_01_training
+# uv run --active --directory .\webphish python -m src.step_02_training_auto
 # __file__ not defined (e.g. PyCharm console)
 try:
     SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
     DATA_DIR = os.path.join(SCRIPT_DIR, '..', 'data')
-    MODEL_DIR = os.path.join(SCRIPT_DIR, '..', 'models', 'web_phish_step_01')
+    MODEL_DIR = os.path.join(SCRIPT_DIR, '..', 'models', 'web_phish_step_02')
 except NameError:
     SCRIPT_DIR = os.getcwd()
     DATA_DIR = os.path.join(SCRIPT_DIR, 'data')
-    MODEL_DIR = os.path.join(SCRIPT_DIR, 'models', 'web_phish_step_01')
+    MODEL_DIR = os.path.join(SCRIPT_DIR, 'models', 'web_phish_step_02')
 
 ##########
 # ### Initial Setup
@@ -46,12 +46,15 @@ MIN_WORD_COUNT = 10
 
 # training parameters
 web_phish_params = {
-    'batch_size': 32,
-    'embed_dim': 16,
-    'conv_channels': 16,
-    'kernel_size': 8,
-    'learning_rate': .0015,
-    'epochs': 20,
+    'batch_size': 128,
+    'embed_dim': 32,
+    'conv_channels': 64,
+    'kernel_sizes': [3, 5, 8],
+    'learning_rate': 0.0027,  # derived from optuna trial
+    'weight_decay': .0001,
+    'dropout': .3,
+    'pos_weight': 2.0,
+    'epochs': 7,
     'max_doc_length': 1898
 }
 
@@ -114,14 +117,14 @@ html_train_pt_load = DataLoader(
 # ### Define WebPhish Model Architecture
 
 # web phish model architecture
-class WebPhishBaseModel(nn.Module):
+class WebPhishModel(nn.Module):
     def __init__(self,
                  token_vocab_size,
-                 token_embed_dim=16,
-                 conv_out_channels=16,
-                 conv_kernel_size=8,
-                 max_seq_length=1898):
-        super(WebPhishBaseModel, self).__init__()
+                 token_embed_dim=32,
+                 conv_out_channels=64,
+                 conv_kernel_sizes=(3, 5, 8),
+                 dropout=.3):
+        super(WebPhishModel, self).__init__()
 
         # embedding layer for raw token vectors
         self.html_embedding = nn.Embedding(
@@ -130,38 +133,42 @@ class WebPhishBaseModel(nn.Module):
             padding_idx=0
         )
 
-        # convolutional layer
-        self.conv1_html = nn.Conv1d(
-            in_channels=token_embed_dim,
-            out_channels=conv_out_channels,
-            kernel_size=conv_kernel_size
-        )
+        # parallel convolutional layers
+        self.html_convs = nn.ModuleList([
+            nn.Conv1d(
+                in_channels=token_embed_dim,
+                out_channels=conv_out_channels,
+                kernel_size=kernel_size
+            )
+            for kernel_size in conv_kernel_sizes
+        ])
 
         # fully connected layers
-        self.fc1 = nn.Linear(conv_out_channels * ((max_seq_length - conv_kernel_size + 1) // 2), 10)
-        self.fc2 = nn.Linear(10, 10)
-        self.fc3 = nn.Linear(10, 1)
+        self.fc1 = nn.Linear(
+            conv_out_channels * len(conv_kernel_sizes),
+            32
+        )
+        self.fc2 = nn.Linear(32, 32)
+        self.fc3 = nn.Linear(32, 1)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, x):
         # embedding layer
         html_embed = self.html_embedding(x).permute(0, 2, 1)
 
-        # convolution layer
-        html_conv1 = F.relu(self.conv1_html(html_embed))
+        # convolutional layers with global max pooling
+        html_pooled = [
+            torch.amax(F.relu(conv(html_embed)), dim=2)
+            for conv in self.html_convs
+        ]
 
-        # max pooling
-        pooled = F.max_pool1d(html_conv1, kernel_size=2)
+        # concatenate pooled convolutional features
+        html_features = torch.cat(html_pooled, dim=1)
 
-        # Flatten the pooled features
-        flattened = pooled.view(pooled.size(0), -1)
-
-        # Fully connected layers
-        fc1_out = F.relu(self.fc1(flattened))
-        fc2_out = F.relu(self.fc2(fc1_out))
+        # fully connected layers
+        fc1_out = self.dropout(F.relu(self.fc1(html_features)))
+        fc2_out = self.dropout(F.relu(self.fc2(fc1_out)))
         output = self.fc3(fc2_out)
-
-        # this layer can be added to convert logits -> probability
-        # output = torch.sigmoid(self.fc3(fc2_out))
 
         return output
 
@@ -169,34 +176,40 @@ class WebPhishBaseModel(nn.Module):
 ##########
 # ### Train Model With Selected Parameters
 
-# initialize the model being tuned
-nn_model = WebPhishBaseModel(
+# initialize the model being trained
+nn_model = WebPhishModel(
     token_vocab_size=len(word_to_index),
     token_embed_dim=web_phish_params['embed_dim'],
     conv_out_channels=web_phish_params['conv_channels'],
-    conv_kernel_size=web_phish_params['kernel_size'],
-    max_seq_length=web_phish_params['max_doc_length']
+    conv_kernel_sizes=web_phish_params['kernel_sizes'],
+    dropout=web_phish_params['dropout']
 )
 
 # send model to gpu_device
 nn_model.to(gpu_device)
 
-# initialize the adam optimizer
-optimizer = torch.optim.Adam(
+# initialize the adamw optimizer
+optimizer = torch.optim.AdamW(
     nn_model.parameters(),
-    lr=web_phish_params['learning_rate']
+    lr=web_phish_params['learning_rate'],
+    weight_decay=web_phish_params['weight_decay']
 )
 
 # create criterion / loss function
-criterion = nn.BCEWithLogitsLoss()
+criterion = nn.BCEWithLogitsLoss(
+    pos_weight=torch.tensor(
+        [web_phish_params['pos_weight']],
+        device=gpu_device
+    )
+)
 
 # turn on training mode dropout=on
 nn_model.train()
 
-# train the model for epochs
+# train the model for seven epochs
 for epoch in range(web_phish_params['epochs']):
     # in case loss isn't referenced
-    loss = float("inf")
+    loss = float('inf')
 
     # perform gradient descent for each batch of data
     for x_train, y_train in html_train_pt_load:
@@ -206,7 +219,7 @@ for epoch in range(web_phish_params['epochs']):
         # send data to gpu
         x_train, y_train = x_train.to(gpu_device), y_train.to(gpu_device)
 
-        # make a prediction (forward-pass) using current batch
+        # make a prediction using current batch
         y_hat = nn_model(x_train)
 
         # calculate error/loss
@@ -222,7 +235,7 @@ for epoch in range(web_phish_params['epochs']):
         optimizer.step()
 
     # print out epoch and loss
-    print("Epoch: {0}, Loss: {1}".format(epoch, loss.item()))
+    print('Epoch: {0}, Loss: {1}'.format(epoch, loss.item()))
 
 # evaluate on training set
 print('Training WebPhish Results:')
@@ -237,15 +250,15 @@ ut.print_score_metrics(
 )
 print()
 # Training WebPhish Results:
-# Model Accuracy: 0.9989
-# Model Precision: 0.9968
-# Model Recall: 0.9996
-# Model F1-Score: 0.9982
-# Model False Positive Rate (FPR): 0.0015
-# Model False Negative Rate (FNR): 0.0004
+# Model Accuracy: 0.9953
+# Model Precision: 0.9905
+# Model Recall: 0.9945
+# Model F1-Score: 0.9925
+# Model False Positive Rate (FPR): 0.0044
+# Model False Negative Rate (FNR): 0.0055
 
 ##########
-# ### Test Model On Validation Data
+# ### Test Model On Testing Data
 
 # load in html testing data
 html_test_df = pd.read_parquet(
@@ -265,11 +278,11 @@ html_test_tuples = [
     for row in html_test_df.itertuples()
 ]
 
-# generate a data loader to train model
+# generate a data loader to test model
 # noinspection PyTypeChecker
 html_test_pt_load = DataLoader(
     dataset=html_test_tuples,
-    batch_size=32
+    batch_size=web_phish_params['batch_size']
 )
 
 # evaluate on testing set
@@ -285,12 +298,60 @@ ut.print_score_metrics(
 )
 print()
 # Testing WebPhish Results:
-# Model Accuracy: 0.9554
-# Model Precision: 0.9404
-# Model Recall: 0.9199
-# Model F1-Score: 0.93
-# Model False Positive Rate (FPR): 0.0277
-# Model False Negative Rate (FNR): 0.0801
+# Model Accuracy: 0.9672
+# Model Precision: 0.9485
+# Model Recall: 0.9498
+# Model F1-Score: 0.9492
+# Model False Positive Rate (FPR): 0.0245
+# Model False Negative Rate (FNR): 0.0502
+
+##########
+# ### Validate Model On Final Holdout Data
+
+# load in html validation data
+html_valid_df = pd.read_parquet(
+    os.path.join(DATA_DIR, 'train-test', 'html_valid.parquet')
+)
+
+# get parsed html as tokens
+html_valid_df['html_word_tokens'] = html_valid_df['html_word_parsed'].apply(
+    func=ut.get_html_tokens,
+    word_to_index=word_to_index,
+    max_doc_len=web_phish_params['max_doc_length']
+)
+
+# convert df into pytorch tuples
+html_valid_tuples = [
+    (torch.tensor(row.html_word_tokens, dtype=torch.long), row.phishing)
+    for row in html_valid_df.itertuples()
+]
+
+# generate a data loader to validate model
+# noinspection PyTypeChecker
+html_valid_pt_load = DataLoader(
+    dataset=html_valid_tuples,
+    batch_size=web_phish_params['batch_size']
+)
+
+# evaluate on final validation set
+print('Validation WebPhish Results:')
+html_valid_pred = ut.evaluate_nn(
+    trained_model=nn_model,
+    test_loader=html_valid_pt_load,
+    gpu_device=gpu_device
+)
+ut.print_score_metrics(
+    y_true=html_valid_pred[0],
+    y_pred=html_valid_pred[1]
+)
+print()
+# Validation WebPhish Results:
+# Model Accuracy: 0.9627
+# Model Precision: 0.9425
+# Model Recall: 0.9416
+# Model F1-Score: 0.942
+# Model False Positive Rate (FPR): 0.0273
+# Model False Negative Rate (FNR): 0.0584
 
 ##########
 # ### Save Model Weights and Word Index
@@ -313,4 +374,3 @@ torch.save(
 # save word to index dictionary
 with open(os.path.join(MODEL_DIR, 'web-phish-word-index-' + current_date_time_str + '.json'), 'w') as json_file:
     json.dump(word_to_index, json_file)
-

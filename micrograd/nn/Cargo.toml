@@ -1,0 +1,12 @@
+[package]
+name = "rust_nn"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "rust_nn"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.29"
+rand = "0.9"

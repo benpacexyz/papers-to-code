@@ -23,20 +23,6 @@ The best-performing configuration was then human validated through repeated runs
 
 Codex GPT 5.6 Sol (max) was given 3 independent attempts to improve the results and the highest scoring model based on a final hold out set is the final model shown in step_02. This README.md and the final holdout set were omitted from the files available to the agent.
 
-```bash
-# command
-codex -c 'sandbox_mode="workspace-write"'
-
-# settings
-approval_policy = "on-request"
-sandbox_mode = "read-only"
-model = "gpt-5.6-sol"
-model_reasoning_effort = "max"
-
-[windows]
-sandbox = "elevated"
-```
-
 ```
 I'm trying to improve the results of the model trained in src/step_01_training.py. Testing results currently seem a bit lower than what is acceptable for the use cases of this model.
 
