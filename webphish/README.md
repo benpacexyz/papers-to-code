@@ -42,37 +42,53 @@ Once you complete this and identify material improvements, please write out your
 step_01
 ```
 Training WebPhish Results:
-  Accuracy: 0.9972
-  Precision: 0.9923
-  Recall: 0.9989
-  F1-Score: 0.9956
-  False Positive Rate (FPR): 0.0036
-  False Negative Rate (FNR): 0.0011
+  Accuracy: 0.999
+  Precision: 0.9974
+  Recall: 0.9995
+  F1-Score: 0.9985
+  False Positive Rate (FPR): 0.0012
+  False Negative Rate (FNR): 0.0005
 
 Testing WebPhish Results:
-  Accuracy: 0.9606
-  Precision: 0.9665
-  Recall: 0.9542
-  F1-Score: 0.9603
-  False Positive Rate (FPR): 0.0329
-  False Negative Rate (FNR): 0.0458
+  Accuracy: 0.9524
+  Precision: 0.9423
+  Recall: 0.9077
+  F1-Score: 0.9247
+  False Positive Rate (FPR): 0.0264
+  False Negative Rate (FNR): 0.0923
+
+Validation WebPhish Results:
+  Accuracy: 0.952
+  Precision: 0.9554
+  Recall: 0.8925
+  F1-Score: 0.9229
+  False Positive Rate (FPR): 0.0198
+  False Negative Rate (FNR): 0.1075
 ```
 
 step_02
 ```
 Training WebPhish Results:
-  Accuracy: 0.9972
-  Precision: 0.9923
-  Recall: 0.9989
-  F1-Score: 0.9956
-  False Positive Rate (FPR): 0.0036
-  False Negative Rate (FNR): 0.0011
+  Accuracy: 0.9953
+  Precision: 0.9905
+  Recall: 0.9945
+  F1-Score: 0.9925
+  False Positive Rate (FPR): 0.0044
+  False Negative Rate (FNR): 0.0055
 
 Testing WebPhish Results:
-  Accuracy: 0.9606
-  Precision: 0.9665
-  Recall: 0.9542
-  F1-Score: 0.9603
-  False Positive Rate (FPR): 0.0329
-  False Negative Rate (FNR): 0.0458
+  Accuracy: 0.9672
+  Precision: 0.9485
+  Recall: 0.9498
+  F1-Score: 0.9492
+  False Positive Rate (FPR): 0.0245
+  False Negative Rate (FNR): 0.0502
+
+Validation WebPhish Results:
+  Accuracy: 0.9627
+  Precision: 0.9425
+  Recall: 0.9416
+  F1-Score: 0.942
+  False Positive Rate (FPR): 0.0273
+  False Negative Rate (FNR): 0.0584
 ```

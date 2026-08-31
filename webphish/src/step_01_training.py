@@ -237,12 +237,12 @@ ut.print_score_metrics(
 )
 print()
 # Training WebPhish Results:
-# Model Accuracy: 0.9989
-# Model Precision: 0.9968
-# Model Recall: 0.9996
-# Model F1-Score: 0.9982
-# Model False Positive Rate (FPR): 0.0015
-# Model False Negative Rate (FNR): 0.0004
+# Model Accuracy: 0.999
+# Model Precision: 0.9974
+# Model Recall: 0.9995
+# Model F1-Score: 0.9985
+# Model False Positive Rate (FPR): 0.0012
+# Model False Negative Rate (FNR): 0.0005
 
 ##########
 # ### Test Model On Validation Data
@@ -285,12 +285,60 @@ ut.print_score_metrics(
 )
 print()
 # Testing WebPhish Results:
-# Model Accuracy: 0.9554
-# Model Precision: 0.9404
-# Model Recall: 0.9199
-# Model F1-Score: 0.93
-# Model False Positive Rate (FPR): 0.0277
-# Model False Negative Rate (FNR): 0.0801
+# Model Accuracy: 0.9524
+# Model Precision: 0.9423
+# Model Recall: 0.9077
+# Model F1-Score: 0.9247
+# Model False Positive Rate (FPR): 0.0264
+# Model False Negative Rate (FNR): 0.0923
+
+##########
+# ### Validate Model On Final Holdout Data
+
+# load in html validation data
+html_valid_df = pd.read_parquet(
+    os.path.join(DATA_DIR, 'train-test', 'html_valid.parquet')
+)
+
+# get parsed html as tokens
+html_valid_df['html_word_tokens'] = html_valid_df['html_word_parsed'].apply(
+    func=ut.get_html_tokens,
+    word_to_index=word_to_index,
+    max_doc_len=web_phish_params['max_doc_length']
+)
+
+# convert df into pytorch tuples
+html_valid_tuples = [
+    (torch.tensor(row.html_word_tokens, dtype=torch.long), row.phishing)
+    for row in html_valid_df.itertuples()
+]
+
+# generate a data loader to validate model
+# noinspection PyTypeChecker
+html_valid_pt_load = DataLoader(
+    dataset=html_valid_tuples,
+    batch_size=web_phish_params['batch_size']
+)
+
+# evaluate on final validation set
+print('Validation WebPhish Results:')
+html_valid_pred = ut.evaluate_nn(
+    trained_model=nn_model,
+    test_loader=html_valid_pt_load,
+    gpu_device=gpu_device
+)
+ut.print_score_metrics(
+    y_true=html_valid_pred[0],
+    y_pred=html_valid_pred[1]
+)
+print()
+# Validation WebPhish Results:
+# Model Accuracy: 0.952
+# Model Precision: 0.9554
+# Model Recall: 0.8925
+# Model F1-Score: 0.9229
+# Model False Positive Rate (FPR): 0.0198
+# Model False Negative Rate (FNR): 0.1075
 
 ##########
 # ### Save Model Weights and Word Index
